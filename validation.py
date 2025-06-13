@@ -12,13 +12,13 @@ def echo(phrase: str) -> None:
    print(phrase)
 
 
-
 # for now I assume a context c is set fixed.
 # also I assume that the choices and grounds are fixed.
 # what fixed means is that they are not changed during the execution of the program i.e. not more grounds or choices are added.
 # this is a simplification for now, but it should be easy to change later on, if needed.
 choices = np.zeros(3)
 grounds = np.zeros(5)
+
 
 def generateWeightSystem(choices, grounds) :
     """This function should generate a weight system with more interesting weights than only 1s.
@@ -67,7 +67,7 @@ def addWeightSystems(weight_systems: list) :
 def validateWeightSystem(weight_system, type: str = 'default') -> np.ndarray:
     """There may be some logic to validate the weight system. This function applies the contraints to the weight system to make it valid."""
     validWS = weight_system.copy()
-
+    # type can be 'default', 'strict', 'singleProp', 'probabilistic', 'delta', 'uniform'
 
     # Add your validation logic here
     if type == 'default': 
@@ -156,14 +156,14 @@ def competition(ws, options) -> None:
     and outputs a value for each option in the choice set."""
     # also known as dynamic scale
 
-    v = np.zeros(len(options))
+    v = np.ones(len(options))
     for i in range(len(options)):
         for j in range(len(options)):
             if i != j:
                 print(i,j)
                 v1, v2 = detachment(ws, options[i], options[j])
-                v[i] += v1
-                v[j] += v2
+                v[i] = 0 if v1 == -1 else 1
+                v[j] = 0 if v2 == -1 else 1
                 # Here we would do something with v1 and v2, like updating a score or similar
                 # For now, we just print them
                 print(f"Detachment between {options[i]} and {options[j]}: {v1}, {v2}")
@@ -171,29 +171,117 @@ def competition(ws, options) -> None:
     return v
 
 
-def lossMetric1(iValues, cValues) -> float:
-    """This function calculates a loss metric between two sets of values."""
-    # iValues are the values from the weight system
-    # cValues are the values from the competition
-    # The loss metric is the sum of the absolute differences between the two sets of values
-    pass
+def metric1(iValues, cValues) -> float:
+    """This function calculates a metric between two sets of values."""
+    # Loss(R, c, RR, O)(I) = Sum_o∈O Sum_i∈I [D(R, wi, c, RR, O)(o)̸ = D(R, wI , c, RR, O)(o)]
+    # Assuming isValues and cValues are lists or arrays of values
+    # Here we would calculate the loss metric for each value in isValues
+    length = len(iValues) if len(iValues) == len(cValues) else -1
+
+    a = np.array(iValues)
+    b = np.array(cValues)
+    disagrees = (a != b) if length > 0 else -1
+    print(f"Loss: {disagrees}")
+
+    return disagrees
 
 
-def lossMetric2(iValues, cValues) -> float:
-    """This function calculates a loss metric between two sets of values."""
-    # iValues are the values from the weight system
-    # cValues are the values from the competition
-    # The loss metric is the sum of the squared differences between the two sets of values
-    pass
+def metric2(iValues, cValues) -> float:
+    """This function calculates a metric between two sets of values."""
+    # coherence = Sum_o∈O [P (x, y) ∈ I × I1{D(R,wx,c,RR,O)(o)}D(R, wy , c, RR, O)(o)]
+    # Assuming isValues and cValues are lists or arrays of values
+    # Here we would calculate the loss metric for each value in isValues
+    length = len(iValues) if len(iValues) == len(cValues) else -1
+
+    a = np.array(iValues)
+    b = np.array(cValues)
+    agrees = (a == b) if length > 0 else -1
+    print(f"Agrees: {agrees}")
+
+    return agrees
+    
+
+def metric3(isValues, cValues) -> float:
+    """This function calculates a metric between two sets of values."""
+    # agreement = Sum_o∈O [Prod_i∈I 1{D(R,wa1 ,c,RR,O)(o)}D(R, wi, c, RR, O)(o)]
+
+    agreement = np.zeros_like(isValues)
+
+    for i in range(len(isValues)):
+        # Assuming isValues and cValues are lists or arrays of values
+        # Here we would calculate the loss metric for each value in isValues
+        agreement[i] = metric2(isValues[i], cValues)  # Call metric1 to get the loss for the current iValues
+
+    print(f"Agree's: {agreement}")
+
+    return agreement
 
 
-def lossMetric3(iValues, cValues) -> float:
-    """This function calculates a loss metric between two sets of values."""
-    # iValues are the values from the weight system
-    # cValues are the values from the competition
-    # The loss metric is the sum of the squared differences between the two sets of values
-    pass
+def metric4(isValues, cValues) -> float:
+    """This function calculates a metric between two sets of values."""
+    # This is a placeholder for now, as the actual implementation of the metric is not yet defined
+    # This does the opposite of metric3, i.e. it calculates the disagreement
 
+    disagreement = np.zeros_like(isValues)
+
+    for i in range(len(isValues)):
+        # Assuming isValues and cValues are lists or arrays of values
+        # Here we would calculate the loss metric for each value in isValues
+        disagreement[i] = metric1(isValues[i], cValues)  # Call metric1 to get the loss for the current iValues
+
+    print(f"Disagree's: {disagreement}")
+
+    return disagreement
+
+
+def wrapperMetric(metric: str, isValues, cValues) -> None:
+    """This function is a wrapper for the loss metrics.
+    It should take the values from the weight system and the competition and return a value."""
+    # This is a placeholder for now, as the actual implementation of the metrics is not yet defined
+    # The metric can be 'loss1', 'loss2', 'loss3'.
+
+    total = 0  # Initialize loss to zero
+    tmp = []  # Temporary variable to hold the loss for each index
+
+    if metric == 'disagrees':
+        # Call lossMetric1 with the appropriate values
+        for iValues in isValues:
+            tmp = metric1(iValues, cValues) 
+            total += tmp.sum()
+        # After the loop, print the total loss
+        print(f"Total loss: {total}")
+
+    elif metric == 'agrees':
+        # Call lossMetric2 with the appropriate values
+        for iValues in isValues:
+            tmp = metric2(iValues, cValues)   
+            total += tmp.sum()
+        # After the loop, print the total loss
+        print(f"Total agrees: {total}")
+
+    elif metric == 'agreement':
+        # Call lossMetric3 with the appropriate values
+        disagreement = np.zeros(len(cValues))  # Initialize agreement array
+        # Iterate over each isValue and calculate the agreement for each cValue
+        tmp = metric3(isValues, cValues)
+        for j in range(len(cValues)):
+            disagreement[j] = (len(isValues) == np.sum(tmp[:, j]))  # Sum the losses for each cValue
+        total = np.sum(disagreement)  # Sum the agreement values
+        print(f"Total agreement: {total}")
+
+    elif metric == 'disagreement':
+        # Call lossMetric4 with the appropriate values 
+        # All individuals disagree with the collective on the state of an option
+        agreement = np.zeros(len(cValues))  # Initialize agreement array
+        # Iterate over each isValue and calculate the agreement for each cValue
+        tmp = metric4(isValues, cValues)
+        for j in range(len(cValues)):
+            agreement[j] = (len(isValues) == np.sum(tmp[:, j]))  # Sum the losses for each cValue
+        total = np.sum(agreement)  # Sum the agreement values
+        print(f"Total disagreement: {total}")
+
+    else:
+        raise ValueError("Unknown metric type")
 
 # Get / Generate data set for testing
 def getDataSet() -> tuple:
@@ -202,8 +290,8 @@ def getDataSet() -> tuple:
     # df2 = pd.read_csv('out_ohlcv.csv')
     df1 = pd.read_csv('out_ticks.csv', index_col=0)
     df2 = pd.read_csv('out_ohlcv.csv', index_col=0)
-    print(df1.head())
-    print(df2.head())
+    print(df1)
+    print(df2)
     return df1, df2
 
 
@@ -217,13 +305,55 @@ def test(x: int) -> None:
     # y = np.zeros((3,3,5,2))
     # print(y)
     # print(np.sign(0.3))
-    y1 = generateWeightSystem(choices, grounds)
+    # y1 = generateWeightSystem(choices, grounds)
     # y2 = instantiateWeightSystem(choices, grounds)
     # y = addWeightSystems([y1, y2])
-    print(y1)
+    # print(y1)
     # print(np.sum(y[0,1,:,0]))
     # z = detachment(y, 0, 1)
     # print(z)
+    # print(np.array([1, 2, 3]) == np.array([1, 2, 3]))
+    # print(np.array([1, 2, 3]) == np.array([1, 2, 4]))
+
+    # print((np.array([1, 2, 3]) == np.array([1, 2, 3])) == (np.array([1, 2, 3]) == np.array([1, 2, 4])))
+    # print(np.array([1, 2, 3]) == (np.array([1, 2, 3]) == np.array([1, 2, 4])))
+
+    # print(np.array([1, 1, 1]) == (np.array([1, 1, 1]) == np.array([1, 1, 1])))
+
+    # print(metric1([1, 2, 3], [1, 2, 3]))
+    # print(metric1([1, 2, 3], [1, 2, 4]))
+
+    # print(metric2([[1, 2, 3]], [1, 2, 3]))
+    # print(metric2([[1, 2, 3]], [1, 2, 4]))
+
+    # print(metric3([[1, 1, 1],[1, 1, 0]], [1, 1, 1]))
+    # print(metric3([[1, 1, 1],[1, 1, 0],[1, 0, 1]], [1,1,1]))
+
+    # print(metric4([[1, 1, 1],[1, 1, 0]], [1, 1, 1]))
+    # print(metric4([[1, 1, 1],[1, 1, 0],[1, 0, 1]], [1,1,1]))
+
+    print("----------------")
+
+    wrapperMetric('disagrees', [[1, 1, 1]], [1, 1, 1])
+    print("----")
+    wrapperMetric('disagrees', [[1, 1, 1]], [1, 1, 0])
+    print("----------------")
+
+    wrapperMetric('agrees', [[1, 1, 1]], [1, 1, 1])
+    print("----")
+    wrapperMetric('agrees', [[1, 1, 1]], [1, 1, 0])
+    print("----------------")
+
+    wrapperMetric('agreement', [[1, 1, 1],[1, 1, 1]], [1, 1, 1])
+    print("----")
+    wrapperMetric('agreement', [[1, 1, 1],[1, 1, 0]], [1, 1, 0])
+    print("----------------")
+
+    wrapperMetric('disagreement', [[1, 1, 1],[1, 1, 0]], [1, 1, 1])
+    print("----")
+    wrapperMetric('disagreement', [[1, 1, 1],[1, 1, 1]], [1, 1, 0])
+    print("----------------")
+
     pass
 
 
@@ -233,8 +363,8 @@ def test(x: int) -> None:
 def main() -> int:
     """Main function to handle command line arguments."""
     # competition(instantiateWeightSystem(choices, grounds), range(len(choices)))
-    # test(1)
-    getDataSet()
+    test(1)
+    # getDataSet()
     return 0
 
 if __name__ == '__main__':
