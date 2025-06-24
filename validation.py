@@ -1,9 +1,21 @@
 # echo.py
 
-import shlex
+# import shlex
 import sys
 import numpy as np
 import pandas as pd
+# import edgar
+# from edgar import *
+# from edgar.xbrl import XBRLS
+# import matplotlib.ticker as mtick
+from datetime import timedelta
+from datetime import datetime
+import matplotlib.pyplot as plt
+import mplfinance as mpf
+import seaborn as sns
+import yfinance as yf
+
+
 
 def echo(phrase: str) -> None:
    """A dummy wrapper around print."""
@@ -13,31 +25,33 @@ def echo(phrase: str) -> None:
 
 
 # for now I assume a context c is set fixed.
-# also I assume that the choices and grounds are fixed.
-# what fixed means is that they are not changed during the execution of the program i.e. not more grounds or choices are added.
+# also I assume that the options and grounds are fixed.
+# what fixed means is that they are not changed during the execution of the program i.e. not more grounds or options are added.
 # this is a simplification for now, but it should be easy to change later on, if needed.
-choices = np.zeros(3)
-grounds = np.zeros(5)
+options = np.zeros(5) # strong sell, sell, hold, buy, strong buy
+grounds = np.zeros(10) 
 
 
-def generateWeightSystem(choices, grounds) :
+########## WEIGHT SYSTEM FUNCTIONS ####################################################################################################################################
+
+def generateWeightSystem(options, grounds) :
     """This function should generate a weight system with more interesting weights than only 1s.
     This can potentially be guided by axioms or other logic."""
-    ws = instantiateWeightSystem(choices, grounds)
+    ws = instantiateWeightSystem(options, grounds)
 
     ws = np.random.rand(*ws.shape)  # Randomly initialize the weight system
-    ws = np.clip(ws, 0, 1)  # Ensure weights are between 0 and 1    
+    ws = np.clip(ws, 0, 1)  # Ensure weights are between 0 and 1
     ws = 100 * ws  # Scale weights to a range of 0 to 100
     
     return ws
 
 
-def instantiateWeightSystem(choices, grounds) :
+def instantiateWeightSystem(options, grounds) :
     """This function instanties a weight system initialized with a choice set and a set of grounds."""
     # We encode it such that the ground is pro option1 and con option2 i.e. ws[option1, option2, ground, 0] is the justifying weight of option1 over option2
     # a weight of 0,0 means that the ground is not relevant for the comparison or that the ws is not familiar with the ground
 
-    lc = len(choices)
+    lc = len(options)
     lr = len(grounds)
     ws = np.ones((lc, lc, lr, 2))
 
@@ -46,13 +60,13 @@ def instantiateWeightSystem(choices, grounds) :
 
 def setWeight(weight_system: dict, option1: str, option2: str, ground: str, weight1: float, weight2: float) -> None:
     """This function sets a value for a ground in the weight system."""
-    # the weight system is an tensor of shape (choices, choices, grounds, 2)
+    # the weight system is an tensor of shape (options, options, grounds, 2)
     # where the first two dimensions are the options and the last dimension is the grounds
     # weight '0' is the justifying weight and weight '1' is the requiring weight
 
     weight_system[option1][option2][ground][0] = weight1
     weight_system[option1][option2][ground][1] = weight2
-   
+
 
 def addWeightSystems(weight_systems: list) :
     """This function combines a list of weights systems into a single weight system."""
@@ -64,9 +78,84 @@ def addWeightSystems(weight_systems: list) :
     return aws
 
 
+def agentType(weight_system: np.ndarray, type: str = 'default') -> np.ndarray:
+    """This function adds a bias to the weight system. The bias is added to the justifying weights."""
+    # The bias is an  that is added to the justifying weights of the weight system
+    # The requiring weights are not changed
+
+    WS = weight_system.copy() # Create a copy of the weight system to avoid modifying the original. Not sure if this is needed, but it is safer. Maybe a deep copy is needed.
+
+    if type == 'default':
+        return WS
+    elif type == 'riskTaking':
+        # Risk taking agents do ?
+    elif type == 'riskAverse':
+        # Risk averse agents do ?
+    elif type == 'optimistic':
+        # Optimistic agents do ?
+    elif type == 'pessimistic':
+        # Pessimistic agents do ?
+    elif type == 'conformist':
+        # Conformist agents do ?
+    elif type == 'independent':
+        # Independent agents do ?
+
+
+    # TODO: Select correct option for weight change
+    elif type == 'selling':
+        # Selling agents are agents that prefer the option sell.
+        # increase the justifying weight of the option sell
+        WS[0, :, :, 0] += 10
+        WS[:, 0, :, 0] += 10
+        # increase the requiring weight of the option sell
+        WS[0, :, :, 1] += 5
+        WS[:, 0, :, 1] += 5
+        return WS
+    elif type == 'buying':
+        # Buying agents are agents that prefer the option buy.
+        # increase the justifying weight of the option buy
+        WS[1, :, :, 0] += 10
+        WS[:, 1, :, 0] += 10
+        # increase the requiring weight of the option buy
+        WS[1, :, :, 1] += 5
+        WS[:, 1, :, 1] += 5
+        return WS
+    elif type == 'stronglySelling':
+        # Strongly selling agents are agents that strongly prefer the option Strong sell.
+        # increase the justifying weight of the option strong sell
+        WS[2, :, :, 0] += 10
+        WS[:, 2, :, 0] += 10
+        # increase the requiring weight of the option strong sell
+        WS[2, :, :, 1] += 5
+        WS[:, 2, :, 1] += 5
+        return WS
+    elif type == 'stronglyBuying':
+        # Strongly buying agents are agents that strongly prefer the option Strong buy.
+        # increase the justifying weight of the option strong buy
+        WS[3, :, :, 0] += 10
+        WS[:, 3, :, 0] += 10
+        # increase the requiring weight of the option strong buy
+        WS[3, :, :, 1] += 5
+        WS[:, 3, :, 1] += 5
+        return WS
+    elif type == 'hold':
+        # Neutral agents are agents that do not prefer the option hold
+        # increase the justifying weight of the option hold
+        WS[4, :, :, 0] += 10
+        WS[:, 4, :, 0] += 10
+        # increase the requiring weight of the option hold
+        WS[4, :, :, 1] += 5
+        WS[:, 4, :, 1] += 5
+        return WS
+    else:
+        raise ValueError("Unknown agent type")
+    
+    return WS
+
+
 def validateWeightSystem(weight_system, type: str = 'default') -> np.ndarray:
     """There may be some logic to validate the weight system. This function applies the contraints to the weight system to make it valid."""
-    validWS = weight_system.copy()
+    validWS = weight_system.copy() # Create a copy of the weight system to avoid modifying the original. Not sure if this is needed, but it is safer. Maybe a deep copy is needed.
     # type can be 'default', 'strict', 'singleProp', 'probabilistic', 'delta', 'uniform'
 
     # Add your validation logic here
@@ -132,6 +221,32 @@ def validateWeightSystem(weight_system, type: str = 'default') -> np.ndarray:
         return -1 # or raise an exception
 
 
+################ SCALE FUNCTIONS ############################################################################################################################################
+
+
+def fivePointScale(wdmin: int, wmin: int, wneut: int, wplus: int, wdplus: int) -> int:
+    """This function takes a value and returns a value on a 5-point scale."""
+    # The scale is: --, -, 0, +, ++
+    plus = 2*wdplus + wplus 
+    min = 2*wdmin + wmin
+    value = plus - min  # Calculate the value based on the weights
+
+    if 2*abs(value) < wneut:
+        return 0
+    elif value < 0:
+        if wdmin > wmin:
+            return -2
+        elif wmin > wdmin:
+            return -1 
+    elif value > 0:
+        if wdplus > wplus:
+            return 2
+        elif wplus > wdplus:
+            return 1
+    else:
+        return 0
+
+
 def detachment(weight_system, option1: int, option2: int) -> tuple:
     """Takes a weight system and 2 options; then outputs two values, one for each option."""
     # This function should calculate the detachment value for the two options
@@ -170,6 +285,8 @@ def competition(ws, options) -> None:
 
     return v
 
+
+############### METRICS FUNCTIONS ####################################################################################################################################
 
 def metric1(iValues, cValues) -> float:
     """This function calculates a metric between two sets of values."""
@@ -234,7 +351,7 @@ def metric4(isValues, cValues) -> float:
     return disagreement
 
 
-def wrapperMetric(metric: str, isValues, cValues) -> None:
+def Metricwrapper(metric: str, isValues, cValues) -> None:
     """This function is a wrapper for the loss metrics.
     It should take the values from the weight system and the competition and return a value."""
     # This is a placeholder for now, as the actual implementation of the metrics is not yet defined
@@ -283,30 +400,105 @@ def wrapperMetric(metric: str, isValues, cValues) -> None:
     else:
         raise ValueError("Unknown metric type")
 
-# Get / Generate data set for testing
-def getDataSet() -> tuple:
-    """This function returns a data set for testing."""
-    # df1 = pd.read_csv('out_ticks.csv')
-    # df2 = pd.read_csv('out_ohlcv.csv')
-    df1 = pd.read_csv('out_ticks.csv', index_col=0)
-    df2 = pd.read_csv('out_ohlcv.csv', index_col=0)
-    print(df1)
-    print(df2)
-    return df1, df2
+
+
+############### DATA RETRIEVAL FUNCTIONS ############################################################################################################################################
+
+def get_data():
+    
+    # Set the start and end date
+    start_date = '1990-01-01'
+    end_date = '2021-07-12'
+
+    # Set the ticker
+    # ticker = 'AMZN'
+    ticker = 'AAPL'
+    # ticker = 'VFIAX'
+
+    # Get the data
+    data = yf.download(ticker, start_date, end_date)
+
+    # Print 5 rows
+    print(data)
+
+    return data
+
+
+def get_data2():
+
+    # set the start and end dates for our market data request to be TTM
+    end_date = datetime(year=2025, month=3, day=1)
+    start_date = end_date - timedelta(days=5*365)
+
+    # set the name of the ticker we want to download market data for
+    ticker = "ASML"  # AEX index on Euronext Amsterdam
+
+    # download market data
+    df = yf.download(
+        tickers=ticker,
+        start=start_date,
+        end=end_date,
+        interval="1d",
+        group_by="ticker",
+        auto_adjust=True,
+        progress=False
+    )
+
+    # restructure the default multi-index dataframe to our preferred format
+    df = df.stack(level="Ticker", future_stack=True)
+    df.index.names = ["Date", "Symbol"]
+    df = df[["Open", "High", "Low", "Close", "Volume"]]
+    df = df.swaplevel(0, 1)
+    df = df.sort_index()
+    print(df)
+
+    # initialize an empty figure
+    plt.figure(figsize=(10, 6))
+    plt.grid(alpha=0.5)
+
+    # plot the closing prices
+    plt.plot(
+        df.xs(ticker).index,
+        df.xs(ticker)["Close"],
+        color="blue",
+        linewidth=1.5
+    )
+
+    # set the plot title and axis labels
+    plt.title(f"{ticker} Closing Price [TTM]")
+    plt.xlabel("Date")
+    plt.ylabel("Price ($)")
+
+    # finish constructing the plot
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+
+    # show the plot
+    plt.show()
+
+    # plot the open, high, low, and close candlestick data
+    mpf.plot(
+        df.xs(ticker),
+        type="candle",
+        style="yahoo",
+        figsize=(14, 7),
+        volume=True,
+        title=f"{ticker} - Basic Candlestick Chart"
+        
+    )
+    mpf.show()
 
 
 
-
-
-
+########### TEST FUNCTIONS ############################################################################################################################################
 
 
 def test(x: int) -> None:
     # y = np.zeros((3,3,5,2))
     # print(y)
     # print(np.sign(0.3))
-    # y1 = generateWeightSystem(choices, grounds)
-    # y2 = instantiateWeightSystem(choices, grounds)
+    # y1 = generateWeightSystem(options, grounds)
+    # y2 = instantiateWeightSystem(options, grounds)
     # y = addWeightSystems([y1, y2])
     # print(y1)
     # print(np.sum(y[0,1,:,0]))
@@ -357,15 +549,42 @@ def test(x: int) -> None:
     pass
 
 
+########### PLOTTING FUNCTIONS ############################################################################################################################################
 
+
+
+########### MAIN FUNCTION #################################################################################################################################################
 
 
 def main() -> int:
     """Main function to handle command line arguments."""
-    # competition(instantiateWeightSystem(choices, grounds), range(len(choices)))
-    test(1)
+    # competition(instantiateWeightSystem(options, grounds), range(len(options)))
+    # test(1)
     # getDataSet()
+    # balance_sheet = Company("AAPL").get_financials().balance_sheet()         
+    # print(balance_sheet)
+    # getDataSet3()
+
+    # plot_revenue("AAPL")
+    # portfolio()
+    get_data2()
     return 0
 
 if __name__ == '__main__':
+    
+
+    # set_identity('Vincent de Wit vincent.j.wit@gmail.com')
+
+
     sys.exit(main())  
+
+
+
+
+    # TODO: 
+    # - How are the 5 options operationalized? i.e. how are they defined?
+    # - What are usefull metrics to determine the "quality" of the current state and a possible next state? 
+    #       Where next state is the state after a decision(option has been chosen) has been made.
+    # - What are usefull metrics to compare the weight systems?
+    # - How to set the remaining agent type weight systems?
+    #       Maybe Benoit, David and Aleks paper is a way to go.
