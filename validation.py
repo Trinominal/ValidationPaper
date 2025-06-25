@@ -87,18 +87,26 @@ def agentType(weight_system: np.ndarray, type: str = 'default') -> np.ndarray:
 
     if type == 'default':
         return WS
+    
+    # TODO: determine what the agent types do
     elif type == 'riskTaking':
         # Risk taking agents do ?
+        return WS
     elif type == 'riskAverse':
         # Risk averse agents do ?
+        return WS
     elif type == 'optimistic':
         # Optimistic agents do ?
+        return WS
     elif type == 'pessimistic':
         # Pessimistic agents do ?
+        return WS
     elif type == 'conformist':
         # Conformist agents do ?
+        return WS
     elif type == 'independent':
         # Independent agents do ?
+        return WS
 
 
     # TODO: Select correct option for weight change
@@ -286,7 +294,7 @@ def competition(ws, options) -> None:
     return v
 
 
-############### METRICS FUNCTIONS ####################################################################################################################################
+############### AGREEMENT METRICS FUNCTIONS ####################################################################################################################################
 
 def metric1(iValues, cValues) -> float:
     """This function calculates a metric between two sets of values."""
@@ -351,7 +359,7 @@ def metric4(isValues, cValues) -> float:
     return disagreement
 
 
-def Metricwrapper(metric: str, isValues, cValues) -> None:
+def MetricWrapper(metric: str, isValues, cValues) -> None:
     """This function is a wrapper for the loss metrics.
     It should take the values from the weight system and the competition and return a value."""
     # This is a placeholder for now, as the actual implementation of the metrics is not yet defined
@@ -401,10 +409,245 @@ def Metricwrapper(metric: str, isValues, cValues) -> None:
         raise ValueError("Unknown metric type")
 
 
+############### QUALITY METRICS FUNCTIONS ############################################################################################################################################
+
+def strictlyIncreasing(datapoints: np.ndarray) -> bool:
+    """This function checks if the datapoints are strictly increasing for each option."""
+    # check if each subsequent datapoint is greater than the previous one
+    strictlyIncreasing = True
+    for i in range(len(datapoints)-1):
+        if datapoints[i] > datapoints[i+1]:
+            strictlyIncreasing = False
+            break
+    
+    return strictlyIncreasing
+
+
+def strictlyDecreasing(datapoints: np.ndarray) -> bool:
+    """This function checks if the datapoints are strictly decreasing for each option."""
+    # check if each subsequent datapoint is less than the previous one
+    strictlyDecreasing = True
+    for i in range(len(datapoints)-1):
+        if datapoints[i] < datapoints[i+1]:
+            strictlyDecreasing = False
+            break
+    
+    return strictlyDecreasing
+
+
+def isStable(datapoints: np.ndarray, threshold: float = 1) -> bool:
+    """This function checks if the datapoints are stable."""
+    # check if the datapoints are stable, i.e. the difference between the maximum and minimum is small
+    # we can use a threshold to determine if the datapoints are stable
+    stable = True
+
+    if np.max(datapoints) - np.min(datapoints) > threshold:
+        stable = False
+    
+    return stable
+
+
+def isDiverging(datapoints: np.ndarray, threshold: float = 1) -> bool:
+    """This function checks if the datapoints are diverging."""
+    # check if the datapoints are diverging, i.e. the difference between the maximum and minimum is large
+    # we can use a threshold to determine if the datapoints are diverging
+    diverging = True
+
+    if np.max(datapoints) - np.min(datapoints) < threshold:
+        diverging = False
+    
+    return diverging
+
+
+def percentageChange(datapoints: np.ndarray) -> float:
+    """This function calculates the percentage change of the datapoints."""
+    # calculate the percentage change of the datapoints
+    # we can use the formula: (new - old) / old * 100
+    if len(datapoints) < 2:
+        return 0.0  # Not enough data to calculate percentage increase
+
+    old_value = datapoints[0]
+    new_value = datapoints[-1]
+    
+    if old_value == 0:
+        return float('inf')  # Avoid division by zero
+
+    percentage_change = ((new_value - old_value) / old_value) * 100
+    
+    return percentage_change
+
+
+def riskAdjustedReturn(datapoints: np.ndarray, risk_free_rate: float = 0.02) -> float:
+    """This function calculates the risk-adjusted return of the datapoints."""
+    # calculate the risk-adjusted return of the datapoints
+    # we can use the formula: (return - risk_free_rate) / volatility
+    if len(datapoints) < 2:
+        return 0.0  # Not enough data to calculate risk-adjusted return
+
+    old_value = datapoints[0]
+    new_value = datapoints[-1]
+    
+    if old_value == 0:
+        return float('inf')  # Avoid division by zero
+
+    returns = (new_value - old_value) / old_value
+    volatility = np.std(datapoints)
+
+    if volatility == 0:
+        return float('inf')  # Avoid division by zero
+
+    risk_adjusted_return = (returns - risk_free_rate) / volatility
+    
+    return risk_adjusted_return
+
+
+def movingAverage(datapoints: np.ndarray, window_size: int = 3) -> np.ndarray:
+    """This function calculates the moving average of the datapoints."""
+    # calculate the moving average of the datapoints
+    # we can use a simple moving average with a window size of 3
+    if len(datapoints) < window_size:
+        return np.array([])  # Not enough data to calculate moving average
+
+    moving_avg = np.convolve(datapoints, np.ones(window_size)/window_size, mode='valid')
+    
+    return moving_avg
+
+
+def average(datapoints: np.ndarray) -> float:
+    """This function calculates the average of the datapoints."""
+    # calculate the average of the datapoints
+    # we can use the mean of the datapoints
+    if len(datapoints) == 0:
+        return 0.0  # Not enough data to calculate average
+
+    avg = np.mean(datapoints)
+    
+    return avg
+
+
+def volatility(datapoints: np.ndarray) -> float:
+    """This function calculates the volatility of the datapoints."""
+    # calculate the volatility of the datapoints
+    # we can use the standard deviation of the datapoints
+    if len(datapoints) < 2:
+        return 0.0  # Not enough data to calculate volatility
+
+    vol = np.std(datapoints)
+    
+    return vol
+
+
+def sharpeRatio(datapoints: np.ndarray, risk_free_rate: float = 0.02) -> float:
+    """This function calculates the Sharpe ratio of the datapoints."""
+    # calculate the Sharpe ratio of the datapoints
+    # we can use the formula: (mean_return - risk_free_rate) / volatility
+    if len(datapoints) < 2:
+        return 0.0  # Not enough data to calculate Sharpe ratio
+
+    mean_return = np.mean(datapoints)
+    vol = volatility(datapoints)
+
+    if vol == 0:
+        return float('inf')  # Avoid division by zero
+
+    sharpe_ratio = (mean_return - risk_free_rate) / vol
+    
+    return sharpe_ratio
+
+
+def sortinoRatio(datapoints: np.ndarray, risk_free_rate: float = 0.02) -> float:
+    """This function calculates the Sortino ratio of the datapoints."""
+    # calculate the Sortino ratio of the datapoints
+    # we can use the formula: (mean_return - risk_free_rate) / downside_deviation
+    if len(datapoints) < 2:
+        return 0.0  # Not enough data to calculate Sortino ratio
+
+    mean_return = np.mean(datapoints)
+    downside_deviation = np.std(datapoints[datapoints < mean_return])
+
+    if downside_deviation == 0:
+        return float('inf')  # Avoid division by zero
+
+    sortino_ratio = (mean_return - risk_free_rate) / downside_deviation
+    
+    return sortino_ratio
+
+
+def calmarRatio(datapoints: np.ndarray, risk_free_rate: float = 0.02) -> float:
+    """This function calculates the Calmar ratio of the datapoints."""
+    # calculate the Calmar ratio of the datapoints
+    # we can use the formula: (mean_return - risk_free_rate) / max_drawdown
+    if len(datapoints) < 2:
+        return 0.0  # Not enough data to calculate Calmar ratio
+
+    mean_return = np.mean(datapoints)
+    max_drawdown = np.max(np.maximum.accumulate(datapoints) - datapoints)
+
+    if max_drawdown == 0:
+        return float('inf')  # Avoid division by zero
+
+    calmar_ratio = (mean_return - risk_free_rate) / max_drawdown
+    
+    return calmar_ratio
+    
+
+def treynorRatio(datapoints: np.ndarray, risk_free_rate: float = 0.02, beta: float = 1.0) -> float:
+    """This function calculates the Treynor ratio of the datapoints."""
+    # calculate the Treynor ratio of the datapoints
+    # we can use the formula: (mean_return - risk_free_rate) / beta
+    if len(datapoints) < 2:
+        return 0.0  # Not enough data to calculate Treynor ratio
+
+    mean_return = np.mean(datapoints)
+
+    if beta == 0:
+        return float('inf')  # Avoid division by zero
+
+    treynor_ratio = (mean_return - risk_free_rate) / beta
+    
+    return treynor_ratio
+
+
+def performanceWrapper(metric: str, datapoints: np.ndarray, risk_free_rate: float = 0.02, beta: float = 1.0) -> float:
+    """This function is a wrapper for the performance metrics.
+    It should take the datapoints and return a value."""
+    # This is a placeholder for now, as the actual implementation of the metrics is not yet defined
+    # The metric can be 'sharpe', 'sortino', 'calmar', 'treynor', 'volatility', 'moving_average', 'percentage_change', 
+    # 'risk_adjusted_return', 'strictly_increasing', 'strictly_decreasing', 'is_stable', or 'is_diverging'.
+
+    if metric == 'sharpe':
+        return sharpeRatio(datapoints, risk_free_rate)
+    elif metric == 'sortino':
+        return sortinoRatio(datapoints, risk_free_rate)
+    elif metric == 'calmar':
+        return calmarRatio(datapoints, risk_free_rate)
+    elif metric == 'treynor':
+        return treynorRatio(datapoints, risk_free_rate, beta)
+    elif metric == 'volatility':
+        return volatility(datapoints)
+    # elif metric == 'moving_average':
+        # return movingAverage(datapoints)
+    elif metric == 'average':
+        return average(datapoints)
+    elif metric == 'percentage_change':
+        return percentageChange(datapoints)
+    elif metric == 'risk_adjusted_return':
+        return riskAdjustedReturn(datapoints, risk_free_rate)
+    elif metric == 'strictly_increasing':
+        return strictlyIncreasing(datapoints)
+    elif metric == 'strictly_decreasing':
+        return strictlyDecreasing(datapoints)
+    elif metric == 'is_stable':
+        return isStable(datapoints)
+    elif metric == 'is_diverging':
+        return isDiverging(datapoints)
+    else:
+        raise ValueError("Unknown performance metric type")
+
 
 ############### DATA RETRIEVAL FUNCTIONS ############################################################################################################################################
 
-def get_data():
+def get_data(ticker: str = 'AAPL', start_date: str = '1990-01-01', end_date: str = '2021-07-12') -> pd.DataFrame:
     
     # Set the start and end date
     start_date = '1990-01-01'
@@ -412,14 +655,14 @@ def get_data():
 
     # Set the ticker
     # ticker = 'AMZN'
-    ticker = 'AAPL'
+    # ticker = 'AAPL'
     # ticker = 'VFIAX'
 
     # Get the data
     data = yf.download(ticker, start_date, end_date)
 
     # Print 5 rows
-    print(data)
+    # print(data)
 
     return data
 
@@ -487,6 +730,82 @@ def get_data2():
         
     )
     mpf.show()
+
+
+########### EXPERIMENT FUNCTIONS ############################################################################################################################################
+
+def prepareInput(datapoints: np.ndarray) -> np.ndarray:
+    """This function prepares the input data for the experiment.
+    It should return a numpy array with the input data."""
+    # This function should take the datapoints and return a numpy array with the input data
+    
+    input = np.array([], dtype=object)  # Create an empty array to hold the input data
+
+    input = np.append(input, performanceWrapper('sharpe', datapoints))
+    input = np.append(input, performanceWrapper('sortino', datapoints))
+    input = np.append(input, performanceWrapper('calmar', datapoints))
+    input = np.append(input, performanceWrapper('treynor', datapoints))
+    input = np.append(input, performanceWrapper('volatility', datapoints))
+    # input = np.append(input, performanceWrapper('moving_average', datapoints))
+    input = np.append(input, performanceWrapper('average', datapoints))
+    input = np.append(input, performanceWrapper('percentage_change', datapoints))
+    input = np.append(input, performanceWrapper('risk_adjusted_return', datapoints))
+    input = np.append(input, performanceWrapper('strictly_increasing', datapoints))
+    input = np.append(input, performanceWrapper('strictly_decreasing', datapoints))
+    input = np.append(input, performanceWrapper('is_stable', datapoints))
+    input = np.append(input, performanceWrapper('is_diverging', datapoints))
+    
+    # Add more metrics as needed
+    # input = np.append(input, performanceWrapper('metric_name', datapoints))   
+    return input
+
+def get_data_for_experiment(maskSize: int = 42) -> np.ndarray:
+    """This function retrieves the data for the experiment.
+    It should return a numpy array with the input data."""
+    # This function should call the get_data function and prepare the input data for the experiment
+    # For now, we will just use the get_data function to get the data
+    datapoints = get_data()  # Get the data from the get_data function
+
+    # get the close prices from the data
+    close_prices = datapoints['Close'].values  # Get the close prices from the data
+
+    # get length of the close prices
+    length = len(close_prices)
+    
+    # Prepare the input data for the experiment
+    input_data = []  # Create an empty array to hold the input data
+    reference_data = []
+    for i in range(length - maskSize + 1):
+        input_data.append(prepareInput(close_prices[i:i + maskSize]))
+        reference_data.append(close_prices[i:i + maskSize - 1])  # Append the last value of the mask to the reference data
+    # Convert the input data to a numpy array
+    input_data = np.array(input_data, dtype=object)  # Convert the input data
+    reference_data = np.array(reference_data, dtype=object)  # Convert the reference data
+    # Return the input data
+    return input_data, reference_data
+
+
+def Experiment1() -> None:
+    """This function runs the first experiment."""
+
+    input_data, reference_data = get_data_for_experiment()  # Get the data for the experiment
+
+    for i in range(len(input_data)):
+        # Here we would run the experiment with the data
+        # For now, we will just print the data
+        print(f"Data for experiment {i}: {input_data[i]}")
+        print(f"Reference data for experiment {i}: {reference_data[i]}")
+
+    # create population of agents
+    
+
+    # Determine choices of agents per inputdata point
+
+    # Determine choice of collective per inputdata point
+
+
+
+    pass
 
 
 
@@ -567,7 +886,10 @@ def main() -> int:
 
     # plot_revenue("AAPL")
     # portfolio()
-    get_data2()
+    # get_data2()
+
+    Experiment1()
+
     return 0
 
 if __name__ == '__main__':
@@ -588,3 +910,9 @@ if __name__ == '__main__':
     # - What are usefull metrics to compare the weight systems?
     # - How to set the remaining agent type weight systems?
     #       Maybe Benoit, David and Aleks paper is a way to go.
+
+
+# Note:
+# For the system to work the weights are multiplied with the values of the performance metrics.
+# However this is not really in the theory. The guess/hope is that this does not matter. Since the weights are just a way to express the importance of the performance metrics.
+# Also it does not nescesarily contradict the theory, since the multiplied weight can be seen as the weight of the partiuclar ground for the option.
