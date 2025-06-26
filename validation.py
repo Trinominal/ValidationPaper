@@ -28,8 +28,8 @@ def echo(phrase: str) -> None:
 # also I assume that the options and grounds are fixed.
 # what fixed means is that they are not changed during the execution of the program i.e. not more grounds or options are added.
 # this is a simplification for now, but it should be easy to change later on, if needed.
-options = np.zeros(5) # strong sell, sell, hold, buy, strong buy
-grounds = np.zeros(10) 
+# options = np.zeros(5) # strong sell, sell, hold, buy, strong buy
+# grounds = np.zeros(10) 
 
 
 ########## WEIGHT SYSTEM FUNCTIONS ####################################################################################################################################
@@ -146,7 +146,7 @@ def agentType(weight_system: np.ndarray, type: str = 'default') -> np.ndarray:
         WS[3, :, :, 1] += 5
         WS[:, 3, :, 1] += 5
         return WS
-    elif type == 'hold':
+    elif type == 'holding':
         # Neutral agents are agents that do not prefer the option hold
         # increase the justifying weight of the option hold
         WS[4, :, :, 0] += 10
@@ -156,7 +156,7 @@ def agentType(weight_system: np.ndarray, type: str = 'default') -> np.ndarray:
         WS[:, 4, :, 1] += 5
         return WS
     else:
-        raise ValueError("Unknown agent type")
+        raise ValueError("Unknown agent type: {}".format(type))
     
     return WS
 
@@ -255,7 +255,7 @@ def fivePointScale(wdmin: int, wmin: int, wneut: int, wplus: int, wdplus: int) -
         return 0
 
 
-def detachment(weight_system, option1: int, option2: int) -> tuple:
+def detachment(weight_system: np.ndarray, option1: int, option2: int) -> tuple:
     """Takes a weight system and 2 options; then outputs two values, one for each option."""
     # This function should calculate the detachment value for the two options
 
@@ -273,23 +273,27 @@ def detachment(weight_system, option1: int, option2: int) -> tuple:
     return v1, v2
 
 
-def competition(ws, options) -> None:
+def competition(ws: np.ndarray, options: np.ndarray) -> None:
     """Takes a weight systems and choice set containing options; 
     then runs a pairwise competition between all options using detachment() 
     and outputs a value for each option in the choice set."""
     # also known as dynamic scale
 
-    v = np.ones(len(options))
+    v = np.ones(len(options)) # Initialize a value array with 1s for each option, 1 means permitted and 0 means not permitted
     for i in range(len(options)):
         for j in range(len(options)):
             if i != j:
-                print(i,j)
-                v1, v2 = detachment(ws, options[i], options[j])
-                v[i] = 0 if v1 == -1 else 1
-                v[j] = 0 if v2 == -1 else 1
-                # Here we would do something with v1 and v2, like updating a score or similar
-                # For now, we just print them
-                print(f"Detachment between {options[i]} and {options[j]}: {v1}, {v2}")
+                # print('competition test between', i, 'and', j)
+                # v i becomes not permitted (0) when it gets a -1 somewhere
+                # v j becomes not permitted (0) when it gets a -1 somewhere 
+                v1, v2 = detachment(ws, i, j)
+                if v1 == -1: v[i] = 0
+                if v2 == -1: v[j] = 0 
+                
+                # print(f"Detachment between {options[i]} and {options[j]}: {v1}, {v2}")
+
+    # if np.sum(v) == 0:
+        # print("No options are permitted in the competition. This is a problem.")
 
     return v
 
@@ -306,7 +310,7 @@ def metric1(iValues, cValues) -> float:
     a = np.array(iValues)
     b = np.array(cValues)
     disagrees = (a != b) if length > 0 else -1
-    print(f"Loss: {disagrees}")
+    # print(f"Loss: {disagrees}")
 
     return disagrees
 
@@ -321,7 +325,7 @@ def metric2(iValues, cValues) -> float:
     a = np.array(iValues)
     b = np.array(cValues)
     agrees = (a == b) if length > 0 else -1
-    print(f"Agrees: {agrees}")
+    # print(f"Agrees: {agrees}")
 
     return agrees
     
@@ -337,7 +341,7 @@ def metric3(isValues, cValues) -> float:
         # Here we would calculate the loss metric for each value in isValues
         agreement[i] = metric2(isValues[i], cValues)  # Call metric1 to get the loss for the current iValues
 
-    print(f"Agree's: {agreement}")
+    # print(f"Agree's: {agreement}")
 
     return agreement
 
@@ -354,7 +358,7 @@ def metric4(isValues, cValues) -> float:
         # Here we would calculate the loss metric for each value in isValues
         disagreement[i] = metric1(isValues[i], cValues)  # Call metric1 to get the loss for the current iValues
 
-    print(f"Disagree's: {disagreement}")
+    # print(f"Disagree's: {disagreement}")
 
     return disagreement
 
@@ -374,7 +378,7 @@ def MetricWrapper(metric: str, isValues, cValues) -> None:
             tmp = metric1(iValues, cValues) 
             total += tmp.sum()
         # After the loop, print the total loss
-        print(f"Total loss: {total}")
+        # print(f"Total loss: {total}")
 
     elif metric == 'agrees':
         # Call lossMetric2 with the appropriate values
@@ -382,7 +386,7 @@ def MetricWrapper(metric: str, isValues, cValues) -> None:
             tmp = metric2(iValues, cValues)   
             total += tmp.sum()
         # After the loop, print the total loss
-        print(f"Total agrees: {total}")
+        # print(f"Total agrees: {total}")
 
     elif metric == 'agreement':
         # Call lossMetric3 with the appropriate values
@@ -392,7 +396,7 @@ def MetricWrapper(metric: str, isValues, cValues) -> None:
         for j in range(len(cValues)):
             disagreement[j] = (len(isValues) == np.sum(tmp[:, j]))  # Sum the losses for each cValue
         total = np.sum(disagreement)  # Sum the agreement values
-        print(f"Total agreement: {total}")
+        # print(f"Total agreement: {total}")
 
     elif metric == 'disagreement':
         # Call lossMetric4 with the appropriate values 
@@ -403,10 +407,35 @@ def MetricWrapper(metric: str, isValues, cValues) -> None:
         for j in range(len(cValues)):
             agreement[j] = (len(isValues) == np.sum(tmp[:, j]))  # Sum the losses for each cValue
         total = np.sum(agreement)  # Sum the agreement values
-        print(f"Total disagreement: {total}")
+        # print(f"Total disagreement: {total}")
+
+    elif metric == 'adilemmas':
+        # Call lossMetric1 with the appropriate values
+        for iValues in isValues:
+            if sum(iValues) == 0:
+                total += 1
+
+        # After the loop, print the total loss
+        # print(f"Total dilemmas: {total}")
+
+    elif metric == 'cdilemmas':
+
+        if sum(cValues) == 0:
+            total +=1
+
+    elif metric == 'bothDilemmas':
+        # Call lossMetric1 with the appropriate values
+        x = 1
+        for iValues in isValues:
+            if sum(iValues) != 0:
+                x = 0
+        if x == 0 and sum(cValues) == 0:
+            total += 1
 
     else:
         raise ValueError("Unknown metric type")
+    
+    return total
 
 
 ############### QUALITY METRICS FUNCTIONS ############################################################################################################################################
@@ -759,6 +788,7 @@ def prepareInput(datapoints: np.ndarray) -> np.ndarray:
     # input = np.append(input, performanceWrapper('metric_name', datapoints))   
     return input
 
+
 def get_data_for_experiment(maskSize: int = 42) -> np.ndarray:
     """This function retrieves the data for the experiment.
     It should return a numpy array with the input data."""
@@ -785,24 +815,111 @@ def get_data_for_experiment(maskSize: int = 42) -> np.ndarray:
     return input_data, reference_data
 
 
+def agreementResults(choices: list, collective_choices: list, options: list) -> None:
+    """This function calculates the agreement results for the experiment.
+    It should take the choices of the agents and the collective and return a value."""
+    # This function should calculate the agreement results for the experiment
+    # For now, we will just print the choices of the agents and the collective
+    disagrees = []  # Create an empty list to hold the disagrees
+    agrees = []  # Create an empty list to hold the agrees
+    agreement = []  # Create an empty list to hold the agreement
+    disagreement = []  # Create an empty list to hold the disagreement
+    adilemmas = []  # Create an empty list to hold the adilemmas
+    cdilemmas = []  # Create an empty list to hold the cdilemmas
+    bothDilemmas = []  # Create an empty list to hold the bothDilemmas
+
+    # print("Choices of agents:")
+    for i in range(len(choices)):
+        # print(f"Choices of agents for input data point {i}: {choices[i]}")
+        # print(f"Collective choice for input data point {i}: {collective_choices[i]}")
+
+        # Calculate the agreement metrics
+        isValues = choices[i]  # The choices of the agents
+        cValues = collective_choices[i]  # The choices of the collective
+
+        performance_metrics = ['disagrees', 'agrees', 'agreement', 'disagreement', 'adilemmas', 'cdilemmas', 'bothDilemmas']  # Define the performance metrics
+        # Iterate over the performance metrics and calculate the total agreement for each metric        
+
+        disagrees.append(MetricWrapper('disagrees', isValues, cValues))  # Calculate the disagrees
+        agrees.append(MetricWrapper('agrees', isValues, cValues))  # Calculate the agrees
+        agreement.append(MetricWrapper('agreement', isValues, cValues))  # Calculate the agreement
+        disagreement.append(MetricWrapper('disagreement', isValues, cValues))  # Calculate the disagreement
+        adilemmas.append(MetricWrapper('adilemmas', isValues, cValues))  # Calculate the dilemmas
+        cdilemmas.append(MetricWrapper('cdilemmas', isValues, cValues))  # Calculate the dilemmas
+        bothDilemmas.append(MetricWrapper('bothDilemmas', isValues, cValues))  # Calculate the dilemmas
+
+    return [disagrees, agrees, agreement, disagreement, adilemmas, cdilemmas, bothDilemmas]
+
+
 def Experiment1() -> None:
     """This function runs the first experiment."""
+    options = ['strong_buy', 'buy', 'hold', 'sell', 'strong_sell']  # Define the options
+    grounds = ['sharpe', 'sortino', 'calmar', 'treynor', 'volatility', 'average', 'percentage_change', 'risk_adjusted_return',
+               'strictly_increasing', 'strictly_decreasing', 'is_stable', 'is_diverging']  # Define the grounds
 
     input_data, reference_data = get_data_for_experiment()  # Get the data for the experiment
 
+    # print(f"Input data shape: {input_data.shape}")  # Print the shape of the input data
+    # print(f"Reference data shape: {reference_data.shape}")  # Print the shape of
+    # print(f"Input data: {input_data[0,:]}")  # Print the input data
+    # return
+
+    # for i in range(len(input_data)):
+        # Here we would run the experiment with the data
+        # For now, we will just print the data
+        # print(f"Data for experiment {i}: {input_data[i]}")
+        # print(f"Reference data for experiment {i}: {reference_data[i]}")
+
+    # create population of agents
+    agents = []  # Create an empty list to hold the agents
+    agentTypes = ['default', 'buying', 'selling', 'holding']  # Define the agent types
+    for i in range(len(agentTypes)): # create a weight system for each agent type
+        ws = generateWeightSystem(options, grounds)  # Generate a weight system for the agent
+        ws = agentType(ws, agentTypes[i])  # Set the agent type for the weight system
+        ws = validateWeightSystem(ws, 'default')  # Validate the weight system
+        agents.append(ws)  # Append the weight system to the list of agents
+
+    # Determine choices of agents per inputdata point
+    # Determine choice of collective per inputdata point
+    choices = []  # Create an empty list to hold the choices of the agents
+    collective_choices = []  # Create an empty list to hold the choices of the collective
     for i in range(len(input_data)):
         # Here we would run the experiment with the data
         # For now, we will just print the data
-        print(f"Data for experiment {i}: {input_data[i]}")
-        print(f"Reference data for experiment {i}: {reference_data[i]}")
+        # print(f"Data for experiment {i}: {input_data[i]}")
+        # print(f"Reference data for experiment {i}: {reference_data[i]}")
 
-    # create population of agents
-    
+        # For each agent type, determine the choice of the agent
+        tmp = []  # Temporary variable to hold the choices of the agents
+        for j in range(len(agents)):
+            weights = agents[j]  # compute the weights for now copying the weight system of the agent TODO: should be replaced with the metrics
+            # print(f"Weights of agent {j} for experiment {i}: {weights}")
+            choice = competition(weights, options)  # Determine the choice of the agent using the competition function)
+            # print(f"Choice of agent {j} for experiment {i}: {choice}")
+            # record the choice of the agent in a list or array
+            tmp.append(choice)  # Append the choice of the agent to the list of choices
+        choices.append(tmp)  # Append the choices of the agents to the list of choices
+        
+        # Calculate the weight system for the collective
+        cws = np.zeros_like(agents[0])  # Create an empty weight system for the collective
+        for j in range(len(agentTypes)):
+            cws = addWeightSystems([cws, agents[j]])  # Add the weight systems of the agents to the collective weight system
+        # Determine the choice of the collective
+        cweights = cws
+        collective_choices.append(competition(cweights, options))  # Determine the choice of the collective
 
-    # Determine choices of agents per inputdata point
+        # TODO: Could also add subgroups of agents or different ways of aggregating the weights.
 
-    # Determine choice of collective per inputdata point
+    # Here we have the choices of the agents and the collective for each input data point
+    # We can now analyze the results of the experiment
+    # For now, we will just print the choices of the agents and the collective
+    # print("Choices of agents:")
+    # for i in range(len(choices)):
+    #     print(f"Choices of agents for input data point {i}: {choices[i]}")
+    #     print(f"Collective choice for input data point {i}: {collective_choices[i]}")
 
+    aResults = agreementResults(choices, collective_choices, options)  # Calculate the agreement results for the experiment
+    barChart(aResults)
 
 
     pass
@@ -867,9 +984,56 @@ def test(x: int) -> None:
 
     pass
 
+def detachmentTest() -> None:
+    """This function tests the detachment function."""
+    # This function should test the detachment function with different weight systems and options
+    # For now, we will just print the results of the detachment function
+    options = ['option1', 'option2', 'option3']
+    grounds = ['ground1', 'ground2', 'ground3']
+
+    ws = generateWeightSystem(options, grounds)  # Generate a weight system for the test
+    print("Weight system:")
+    print(ws)
+
+    for i in range(len(options)):
+        for j in range(len(options)):
+            if i != j:
+                print(f"Detachment between {options[i]} and {options[j]}: {detachment(ws, i, j)}")
+
+
+    pass
+
+def competeTest() -> None:
+    """This function tests the competition function."""
+    # This function should test the competition function with different weight systems and options
+    # For now, we will just print the results of the competition function
+    options = ['option1', 'option2', 'option3']
+    grounds = ['ground1', 'ground2', 'ground3']
+
+    ws = generateWeightSystem(options, grounds)  # Generate a weight system for the test
+    print("Weight system:")
+    print(ws)
+
+    print("Competition results:")
+    print(competition(ws, options))  # Call the competition function and print the results
+
 
 ########### PLOTTING FUNCTIONS ############################################################################################################################################
 
+def barChart(df: pd.DataFrame, ticker: str = 'AAPL') -> None:
+    """This function plots a bar chart of a list of vectors of numbers."""
+    # Plot a bar chart of the closing prices
+    print(len(df))
+    data = [sum(df[0]), sum(df[1]), sum(df[2]), sum(df[3]), sum(df[4]), sum(df[5]), sum(df[6])]  # Sum the values of the vectors
+    names = ['Disagrees', 'Agrees', 'Agreement', 'Disagreement', 'aDilemmas', 'cDilemmas', 'BothDilemmas']  # Define the names of the vectors
+    plt.figure(figsize=(10, 6))
+    plt.bar(names, data, color=['red', 'green', 'blue', 'orange', 'brown', 'pink', 'purple'])  # Create a bar chart with the data and names
+    plt.title(f"{ticker} - Agreement Results")
+    plt.xlabel("metrics")
+    plt.ylabel("number of occurances of the metrics")
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    plt.show()
 
 
 ########### MAIN FUNCTION #################################################################################################################################################
@@ -889,6 +1053,8 @@ def main() -> int:
     # get_data2()
 
     Experiment1()
+    # detachmentTest()
+    # competeTest()
 
     return 0
 
