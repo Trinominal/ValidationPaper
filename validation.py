@@ -889,6 +889,8 @@ def Experiment1() -> None:
         # print(f"Data for experiment {i}: {input_data[i]}")
         # print(f"Reference data for experiment {i}: {reference_data[i]}")
 
+# TODO: multiply metrics with weights
+
         # For each agent type, determine the choice of the agent
         tmp = []  # Temporary variable to hold the choices of the agents
         for j in range(len(agents)):
