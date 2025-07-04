@@ -157,8 +157,6 @@ def agentType(weight_system: np.ndarray, type: str = 'default') -> np.ndarray:
         return WS
     else:
         raise ValueError("Unknown agent type: {}".format(type))
-    
-    return WS
 
 
 def validateWeightSystem(weight_system, type: str = 'default') -> np.ndarray:
@@ -200,6 +198,9 @@ def validateWeightSystem(weight_system, type: str = 'default') -> np.ndarray:
                     # if total > 0:
                     #     validWS[i, j, k, 0] /= total
                     #     validWS[i, j, k, 1] /= total
+
+        # TODO: 100 weight points over each pairwise comparison distributed over the reasons maybe 100 over justifying and 100 over requiring, alternatively 100 over both.
+
         return validWS
     elif type == 'delta':
         # Not exactly sure how to put this. The idea behind this is that a reason has weight such that the ground is only a reason for on of the options.
@@ -236,8 +237,8 @@ def fivePointScale(wdmin: int, wmin: int, wneut: int, wplus: int, wdplus: int) -
     """This function takes a value and returns a value on a 5-point scale."""
     # The scale is: --, -, 0, +, ++
     plus = 2*wdplus + wplus 
-    min = 2*wdmin + wmin
-    value = plus - min  # Calculate the value based on the weights
+    minus = 2*wdmin + wmin
+    value = plus - minus  # Calculate the value based on the weights
 
     if 2*abs(value) < wneut:
         return 0
@@ -614,10 +615,8 @@ def calmarRatio(datapoints: np.ndarray, risk_free_rate: float = 0.02) -> float:
 
     if max_drawdown == 0:
         return float('inf')  # Avoid division by zero
-
-    calmar_ratio = (mean_return - risk_free_rate) / max_drawdown
     
-    return calmar_ratio
+    return (mean_return - risk_free_rate) / max_drawdown
     
 
 def treynorRatio(datapoints: np.ndarray, risk_free_rate: float = 0.02, beta: float = 1.0) -> float:
@@ -677,23 +676,11 @@ def performanceWrapper(metric: str, datapoints: np.ndarray, risk_free_rate: floa
 ############### DATA RETRIEVAL FUNCTIONS ############################################################################################################################################
 
 def get_data(ticker: str = 'AAPL', start_date: str = '1990-01-01', end_date: str = '2021-07-12') -> pd.DataFrame:
-    
-    # Set the start and end date
-    start_date = '1990-01-01'
-    end_date = '2021-07-12'
-
-    # Set the ticker
-    # ticker = 'AMZN'
-    # ticker = 'AAPL'
-    # ticker = 'VFIAX'
 
     # Get the data
-    data = yf.download(ticker, start_date, end_date)
+    # data = yf.download(ticker, start_date, end_date)
 
-    # Print 5 rows
-    # print(data)
-
-    return data
+    return yf.download(ticker, start_date, end_date)
 
 
 def get_data2():
@@ -763,30 +750,19 @@ def get_data2():
 
 ########### EXPERIMENT FUNCTIONS ############################################################################################################################################
 
-def prepareInput(datapoints: np.ndarray) -> np.ndarray:
+def prepareInput(datapoints: np.ndarray, metrics: list = None) -> np.ndarray:
     """This function prepares the input data for the experiment.
     It should return a numpy array with the input data."""
     # This function should take the datapoints and return a numpy array with the input data
-    
-    input = np.array([], dtype=object)  # Create an empty array to hold the input data
+    mtr = ['sharpe', 'sortino', 'calmar', 'treynor', 'volatility', 'average', 'percentage_change', 'risk_adjusted_return',
+        'strictly_increasing', 'strictly_decreasing', 'is_stable', 'is_diverging']
+    data = np.array([], dtype=object)  # Create an empty array to hold the input data
 
-    input = np.append(input, performanceWrapper('sharpe', datapoints))
-    input = np.append(input, performanceWrapper('sortino', datapoints))
-    input = np.append(input, performanceWrapper('calmar', datapoints))
-    input = np.append(input, performanceWrapper('treynor', datapoints))
-    input = np.append(input, performanceWrapper('volatility', datapoints))
-    # input = np.append(input, performanceWrapper('moving_average', datapoints))
-    input = np.append(input, performanceWrapper('average', datapoints))
-    input = np.append(input, performanceWrapper('percentage_change', datapoints))
-    input = np.append(input, performanceWrapper('risk_adjusted_return', datapoints))
-    input = np.append(input, performanceWrapper('strictly_increasing', datapoints))
-    input = np.append(input, performanceWrapper('strictly_decreasing', datapoints))
-    input = np.append(input, performanceWrapper('is_stable', datapoints))
-    input = np.append(input, performanceWrapper('is_diverging', datapoints))
-    
-    # Add more metrics as needed
-    # input = np.append(input, performanceWrapper('metric_name', datapoints))   
-    return input
+    if metrics != None
+        for metric in metrics:
+            data = np.append(data, performanceWrapper(mtr[metric], datapoints))
+            
+    return data
 
 
 def get_data_for_experiment(maskSize: int = 42) -> np.ndarray:
@@ -851,13 +827,27 @@ def agreementResults(choices: list, collective_choices: list, options: list) -> 
     return [disagrees, agrees, agreement, disagreement, adilemmas, cdilemmas, bothDilemmas]
 
 
-def Experiment1() -> None:
+def convolve(weights: np.ndarray, input_data: np.ndarray) -> np.ndarray:
+    "convolve the weights of an agent with the values in the input data."
+
+    votes_weights = weights*input_data
+
+    
+
+    return votes_weights
+
+
+
+
+def Experiment1(grounds: list = ['average'], options: list = ['strong_buy', 'buy', 'hold', 'sell', 'strong_sell']) -> None:
     """This function runs the first experiment."""
-    options = ['strong_buy', 'buy', 'hold', 'sell', 'strong_sell']  # Define the options
-    grounds = ['sharpe', 'sortino', 'calmar', 'treynor', 'volatility', 'average', 'percentage_change', 'risk_adjusted_return',
-               'strictly_increasing', 'strictly_decreasing', 'is_stable', 'is_diverging']  # Define the grounds
+    # grounds = ['sharpe', 'sortino', 'calmar', 'treynor', 'volatility', 'average', 'percentage_change', 'risk_adjusted_return',
+            #    'strictly_increasing', 'strictly_decreasing', 'is_stable', 'is_diverging']  # Define the grounds
+
 
     input_data, reference_data = get_data_for_experiment()  # Get the data for the experiment
+    data = prepareInput(input_data)
+    
 
     # print(f"Input data shape: {input_data.shape}")  # Print the shape of the input data
     # print(f"Reference data shape: {reference_data.shape}")  # Print the shape of
@@ -873,42 +863,39 @@ def Experiment1() -> None:
     # create population of agents
     agents = []  # Create an empty list to hold the agents
     agentTypes = ['default', 'buying', 'selling', 'holding']  # Define the agent types
-    for i in range(len(agentTypes)): # create a weight system for each agent type
+    for type in agentTypes: # create a weight system for each agent type
         ws = generateWeightSystem(options, grounds)  # Generate a weight system for the agent
-        ws = agentType(ws, agentTypes[i])  # Set the agent type for the weight system
-        ws = validateWeightSystem(ws, 'default')  # Validate the weight system
+        ws = agentType(ws, type)  # Set the agent type for the weight system
+        ws = validateWeightSystem(ws, 'default')  # Validate the weight system TODO: choose wsType
         agents.append(ws)  # Append the weight system to the list of agents
 
     # Determine choices of agents per inputdata point
     # Determine choice of collective per inputdata point
     choices = []  # Create an empty list to hold the choices of the agents
     collective_choices = []  # Create an empty list to hold the choices of the collective
-    for i in range(len(input_data)):
+    
+    weights = []
+    for i in range(len(agents)):
         # Here we would run the experiment with the data
         # For now, we will just print the data
         # print(f"Data for experiment {i}: {input_data[i]}")
         # print(f"Reference data for experiment {i}: {reference_data[i]}")
 
-# TODO: multiply metrics with weights
-
-        # For each agent type, determine the choice of the agent
-        tmp = []  # Temporary variable to hold the choices of the agents
-        for j in range(len(agents)):
-            weights = agents[j]  # compute the weights for now copying the weight system of the agent TODO: should be replaced with the metrics
+        # TODO: multiply metrics with weights
+        weights[i] = convolve(agents[i],data) #  TODO: either write function or find pythonic numpy way
             # print(f"Weights of agent {j} for experiment {i}: {weights}")
-            choice = competition(weights, options)  # Determine the choice of the agent using the competition function)
+        choice = competition(weights[i], options)  # Determine the choice of the agent using the competition function)
             # print(f"Choice of agent {j} for experiment {i}: {choice}")
             # record the choice of the agent in a list or array
-            tmp.append(choice)  # Append the choice of the agent to the list of choices
-        choices.append(tmp)  # Append the choices of the agents to the list of choices
+        choices.append(choice)  # Append the choices of the agents to the list of choices
         
-        # Calculate the weight system for the collective
-        cws = np.zeros_like(agents[0])  # Create an empty weight system for the collective
-        for j in range(len(agentTypes)):
-            cws = addWeightSystems([cws, agents[j]])  # Add the weight systems of the agents to the collective weight system
-        # Determine the choice of the collective
-        cweights = cws
-        collective_choices.append(competition(cweights, options))  # Determine the choice of the collective
+    # Calculate the weight system for the collective
+    cws = np.zeros_like(agents[0])  # Create an empty weight system for the collective
+    for j in range(len(agents)):
+        cws = addWeightSystems([cws, weights[j]])  # Add the weight systems of the agents to the collective weight system
+    # Determine the choice of the collective
+    cweights = cws # TODO: *data[j]
+    collective_choices.append(competition(cweights, options))  # Determine the choice of the collective
 
         # TODO: Could also add subgroups of agents or different ways of aggregating the weights.
 
