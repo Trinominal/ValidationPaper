@@ -49,8 +49,10 @@ def generate_agents(populationSize: int = 5, grounds: int = 1, options: int = 5)
 
 
 def simulate_experiment(collective: np.ndarray, data: np.ndarray) -> tuple:
-    """ """
+    """This function runs the experiment. It takes the agents and averages and 
+    calculates what each agent would do but also what the collective would do."""
 
+    # TODO make sure that we get weights*datapoint for each datapoint
     colAgent = np.zeros(*collective[0].shape)
     weights = []
     for i in range(len(collective)):
@@ -60,15 +62,47 @@ def simulate_experiment(collective: np.ndarray, data: np.ndarray) -> tuple:
 
     weights.append(colAgent*data)
 
-    decisions = []
+    # options = ['strong_buy', 'buy', 'hold', 'sell', 'strong_sell']
+    options=5
+    dec = []
+    for x in range(len(collective+1)):
+        weight_system = weights[x]
+        de = np.ones(len(options)) # Initialize a value array with 1s for each option, 1 means permitted and 0 means not permitted
+        for option1 in range(len(options)):
+            for option2 in range(len(options)):
+                if option1 != option2:
+                    # print('competition test between', i, 'and', j)
+                    # v i becomes not permitted (0) when it gets a -1 somewhere
+                    # v j becomes not permitted (0) when it gets a -1 somewhere 
+                    jwo1 = np.sum(weight_system[option1,option2,:,0])  # Justifying weight of option1 over option2
+                    rwo1 = np.sum(weight_system[option1,option2,:,1])  # Requiring weight of option1 over option2
+                    jwo2 = np.sum(weight_system[option2,option1,:,0])  # Justifying weight of option2 over option1
+                    rwo2 = np.sum(weight_system[option2,option1,:,1])  # Requiring weight of option2 over option1
+
+                    # print(jwo1, rwo1, jwo2, rwo2)
+
+                    # The values are the sign of the difference between the justifying and requiring weights
+                    v1 = np.sign(jwo1-rwo2)
+                    v2 = np.sign(jwo2-rwo1)
+
+                    if v1 == -1: de[option1] = 0
+                    if v2 == -1: de[option2] = 0 
+
+                    dec.append(de)
    
-    return (decisions, weights)
+    return (dec, weights)
 
 
 def evaluate() -> tuple:
     """ """
 
     return (0)
+
+
+def plot():
+
+
+    pass
 
 def main() -> int:
     """Main function to handle command line arguments."""
