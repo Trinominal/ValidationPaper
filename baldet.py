@@ -124,8 +124,9 @@ def simulate_experiment(collective: np.ndarray, data: np.ndarray) -> tuple:
 
                         # Still a lot of dillemma cases. due to comparitivism.
 
-                        if v1 == -1: de[option1] = 0
-                        if v2 == -1: de[option2] = 0 
+                        # if v1 == -1: de[option1] = 0
+                        if v1 == -1 and v2 != -1: de[option1] = 0
+                        # if v2 == -1: de[option2] = 0 
 
             dec.append(de)
 
