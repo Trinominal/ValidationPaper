@@ -15,7 +15,7 @@ def get_data(maskSize: int = 42, ticker: str = 'AAPL',
     datapoints = yf.download(ticker, start_date, end_date)  # Get the data from the get_data function
     # print('datapoints', datapoints)
     # get the close prices from the data
-    close_prices = datapoints['Close'].values  # Get the close prices from the data
+    close_prices = [x for xs in datapoints['Close'].values for x in xs] # Get the close prices from the data
 
     # get length of the close prices
     length = len(close_prices)
@@ -24,9 +24,12 @@ def get_data(maskSize: int = 42, ticker: str = 'AAPL',
     input_data = []  # Create an empty array to hold the input data
     reference_data = []
     for i in range(length - maskSize + 1):
-        input_data.append(np.average(close_prices[i:i + maskSize])) # take average add other metrics later
-        reference_data.append(close_prices[i:i + maskSize])  # Append the last value of the mask to the reference data
+        riskAdjustedReturn = 1
+        average = np.average(close_prices[i:i + maskSize])
+        input_data.append([average, riskAdjustedReturn]) # take average add other metrics later
 
+        reference_data.append(close_prices[i:i + maskSize])  # Append the last value of the mask to the reference data
+        
     # Convert the input data to a numpy array
     input_data = np.array(input_data, dtype=object)  # Convert the input data
     reference_data = np.array(reference_data, dtype=object)  # Convert the reference data
@@ -35,7 +38,7 @@ def get_data(maskSize: int = 42, ticker: str = 'AAPL',
     return (input_data, reference_data)
 
 
-def generate_agents(populationSize: int = 5, grounds: int = 1, options: int = 2, maskSize: int = 42) -> list:
+def generate_agents(populationSize: int = 5, grounds: int = 2, options: int = 2, maskSize: int = 42, agentTypes = ['random', 'random', 'random', 'random', 'ones']) -> list:
     """This function generates a collective of agents of size populationSize.
     An agent is implemented as an array of weights ranging between 0 and 100"""
     # There is at the moment only one ground, the average. Next to that each value in the mask is a ground.
@@ -43,11 +46,14 @@ def generate_agents(populationSize: int = 5, grounds: int = 1, options: int = 2,
     # where the first dimension is the justifying weight and the second dimension is the requiring weight
     collective = []
     for _ in range(populationSize):
-        ws = np.random.rand(options, options, grounds+maskSize, 2)  # Randomly initialize the weight system
-        # ws = np.ones((options, options, grounds+maskSize, 2)) 
-        ws = np.clip(ws, 0, 1)  # Ensure weights are between 0 and 1
-        # ws = 100 * ws  # Scale weights to a range of 0 to 100
-        ws = np.round(ws,0)  # Round weights to the nearest integer
+        agentType = agentTypes[_]
+        if agentType == 'random':
+            ws = np.random.rand(options, options, grounds+maskSize, 2)  # Randomly initialize the weight system
+            ws = np.clip(ws, 0, 1)  # Ensure weights are between 0 and 1
+            ws = 100 * ws  # Scale weights to a range of 0 to 100
+            ws = np.round(ws,0)  # Round weights to the nearest integer
+        elif agentType == 'ones':
+            ws = np.ones((options, options, grounds+maskSize, 2)) 
         collective.append(ws)
 
     # TODO: implement agent types: risk taking, risk averse, ...
@@ -58,35 +64,27 @@ def simulate_experiment(collective: np.ndarray, data: np.ndarray) -> tuple:
     """This function runs the experiment. It takes the agents and averages and 
     calculates what each agent would do but also what the collective would do."""
 
+    # print(data[0].size, data[0].shape)
+    # print(data[1].size, data[1].shape)
+
     # TODO make sure that we get weights*datapoint for each datapoint
     colAgent = np.zeros((len(data[0]),*collective[0].shape), float)  # Initialize the collective agent's weights
     weights = []
-    for i in range(len(collective)):
+    for i in range(len(collective)): # i is the number of the agent
         agentWeights = np.zeros((len(data[0]),*collective[0].shape), float)  # Initialize the agent's weights
-        for j in range(len(data[0])):
+        
+        for j in range(len(data[0])): # j is the time point
             # For each agent, multiply its weights by the data point
-            # print(agentWeights)
-            agentWeights[j,:,:,0,:] = collective[i][:,:,0,:]*data[0][j]
-            # print(agentWeights)
-            agentWeights[j,:,:,1:,:] = collective[i][:,:,1:,:]*data[1][j]  # Multiply the agent's weights by the data point
-            # print(agentWeights)
-            # print(colAgent[j])
-            # print(colAgent[j].shape)
-            colAgent[j,:,:,0,:] += agentWeights[j,:,:,0,:]
-            colAgent[j,:,:,1:,:] += agentWeights[j,:,:,1:,:]
+            for k in range(len(data[0][j])): # k is the number of the ground
+                agentWeights[j,:,:,k,:] = collective[i][:,:,k,:]*data[0][j][k]
+            for l in range(len(data[0][j])): # l is the index of each preceeding element inside the mask
+                agentWeights[j,:,:,l,:] = collective[i][:,:,l,:]*data[1][j][l]  # Multiply the agent's weights by the data point
+            colAgent[j,:,:,:,:] += agentWeights[j,:,:,:,:]
         weights.append(agentWeights)  # Append the agent's weights to the weights list
 
     weights.append(colAgent)
     # datapoints x options x options x grounds x 2
 
-    # print(weights[0].shape)
-    # print(weights[1].shape)
-    # print(weights[2].shape)
-    # print(collective[0].shape)
-    # return
-    # print(weights[0].shape)
-
-    # options = ['strong_buy', 'buy', 'hold', 'sell', 'strong_sell']
     options = collective[0].shape[0]  # Get the number of options from the shape of the weights
     # print('options', options)
     cdec = []
@@ -145,9 +143,12 @@ def evaluate(experiment: list, data: tuple) -> int:
 
     output = experiment[0]  # Get the output of the experiment
     reference = experiment[1]  # Get the reference data of the experiment
-    averages = data[0]  # Get the averages of the data
+    averages = data[0][:,0]  # Get the averages of the data
+    RaR = data[0][:,1]  # Get the averages of the data
 
+    # print(averages[:,0].shape)
     # print(output)
+    delta = int(0)
 
     agents = len(output)  # The last element is the collective agent
     # print('agents', agents)
@@ -157,11 +158,12 @@ def evaluate(experiment: list, data: tuple) -> int:
     for i in range(len(averages)-1):
         # print('average', averages[i])
         # print('output', output[0][i], output[1][i])
-        delta = averages[i+1] - averages[i] 
+        delta = data[1][i+1][-1] - data[1][i][-1] 
         # print('delta', delta)
         for j in range(agents):
+            # TODO is this logic correct? if current value < next value then we should buy now, if next value < current value than we should sell.
             if delta > 0:
-                # If the stock goes up, the decision should be buy or hold
+                # If the stock goes up, the decision should be buy or hold 
                 if output[j][i][0] == 1:
                     evaluations[j][0] += 1
                 if output[j][i][1] == 1 and output[j][i][0] == 0:
@@ -216,7 +218,7 @@ def main() -> int:
 
     mSize = 3  # Default mask size
     popSize = 5  # Default population size
-    gs = 1  # Default number of grounds
+    gs = 2  # Default number of grounds
     os = 2  # Default number of options
 
     data = get_data(maskSize = mSize, start_date = '2021-07-01', end_date = '2025-07-12')
