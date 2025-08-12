@@ -24,9 +24,9 @@ def get_data(maskSize: int = 42, ticker: str = 'AAPL',
     input_data = []  # Create an empty array to hold the input data
     reference_data = []
     for i in range(length - maskSize + 1):
-        riskAdjustedReturn = 1
+        std = 1/np.std(close_prices[:i+maskSize]) # low standard deviation is a good thing so 1/std
         average = np.average(close_prices[i:i + maskSize])
-        input_data.append([average, riskAdjustedReturn]) # take average add other metrics later
+        input_data.append([average, std]) # take average add other metrics later
 
         reference_data.append(close_prices[i:i + maskSize])  # Append the last value of the mask to the reference data
         
