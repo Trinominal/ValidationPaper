@@ -24,7 +24,17 @@ def get_data(maskSize: int = 42, ticker: str = 'AAPL',
     input_data = []  # Create an empty array to hold the input data
     reference_data = []
     for i in range(length - maskSize + 1):
-        std = 1/np.std(close_prices[:i+maskSize]) # low standard deviation is a good thing so 1/std
+        # low standard deviation is a good thing, means low risk 
+        # low std means we want to buy, risk taking agents will be less against buying with a higher std than risk averse agents
+        # High std is a reason to not buy. low std is a reason to buy. 
+        # jw(std, buy) = std * x1, rw(std, buy) = y1 
+        # jw(std, sell) = std * x2, rw(std, sell) = y2
+        # since std goes up means we dont want to buy we want x1=0 and also y1=0 
+        # risk seeking will have relatively small numbers for x2 and y2  they are not very sensitive to high std
+        # risk averse agents will have relatively large numbers for x2 and y2 they they are very sensitive to high std
+        # we could also add weights between 0 and 1 for x1 and y1 this would mean large numbers for low std which would incentivize buying low std stock.
+        std = np.std(close_prices[i:i+maskSize]) 
+        # std = np.std(close_prices[:i+maskSize]) 
         average = np.average(close_prices[i:i + maskSize])
         input_data.append([average, std]) # take average add other metrics later
 
@@ -38,22 +48,48 @@ def get_data(maskSize: int = 42, ticker: str = 'AAPL',
     return (input_data, reference_data)
 
 
-def generate_agents(populationSize: int = 5, grounds: int = 2, options: int = 2, maskSize: int = 42, agentTypes = ['random', 'random', 'random', 'random', 'ones']) -> list:
+def generate_agents(populationSize: int = 5, grounds: int = 2, options: int = 2, maskSize: int = 42
+                    # , agentTypes = ['random', 'random', 'random', 'random', 'ones'] 
+                    ) -> list:
     """This function generates a collective of agents of size populationSize.
     An agent is implemented as an array of weights ranging between 0 and 100"""
     # There is at the moment only one ground, the average. Next to that each value in the mask is a ground.
     # we get an array of options x options x grounds x 2
     # where the first dimension is the justifying weight and the second dimension is the requiring weight
+    ws = np.zeros((options, options, grounds+maskSize, 2))
     collective = []
     for _ in range(populationSize):
-        agentType = agentTypes[_]
+        # agentType = agentTypes[_]
+        if _%2==0:
+            agentType = 'riskAvers' 
+        else:
+            agentType = 'riskSeeking'
         if agentType == 'random':
-            ws = np.random.rand(options, options, grounds+maskSize, 2)  # Randomly initialize the weight system
-            ws = np.clip(ws, 0, 1)  # Ensure weights are between 0 and 1
-            ws = 100 * ws  # Scale weights to a range of 0 to 100
-            ws = np.round(ws,0)  # Round weights to the nearest integer
+            ws_ = np.random.rand(options, options, grounds+maskSize, 2)  # Randomly initialize the weight system
+            ws_ = np.clip(ws_, 0, 1)  # Ensure weights are between 0 and 1
+            ws_ = 100 * ws_  # Scale weights to a range of 0 to 100
+            ws_ = np.round(ws_,0)  # Round weights to the nearest integer
+            ws = ws_
         elif agentType == 'ones':
-            ws = np.ones((options, options, grounds+maskSize, 2)) 
+            ws.fill(1)
+        else: 
+            # the new value has high weight and the oldest number has low weight creating a weighted sum
+            ws_ = np.arange(1,maskSize+1)
+            for i in range(options):
+                for j in range(options):
+                    # ws[i,j,grounds:,0] = np.arange(1,maskSize+1)
+                    # ws[i,j,grounds:,1] = np.arange(1,maskSize+1)
+                    ws[i,j,grounds:,0].fill(0)
+                    ws[i,j,grounds:,1].fill(0)
+            ws[:,:,0,:].fill(100) # average has 1000 single prop weight
+            if agentType == 'riskAverse':
+                ws[0,1,1,0] = 100 # the reason for selling has jw 100
+                ws[0,1,1,1] = 100 # the reason for selling has rw 100
+            elif agentType == 'riskSeeking':
+                ws[0,1,1,0] = 1 # the reason for selling has jw 10
+                ws[0,1,1,1] = 1 # the reason for selling has rw 10
+
+        print(ws)
         collective.append(ws)
 
     # TODO: implement agent types: risk taking, risk averse, ...
@@ -216,8 +252,8 @@ def plot(evaluation: tuple, experiment: tuple, data: tuple) -> int:
 def main() -> int:
     """Main function to handle command line arguments."""
 
-    mSize = 3  # Default mask size
-    popSize = 5  # Default population size
+    mSize = 42 # Default mask size
+    popSize = 3  # Default population size
     gs = 2  # Default number of grounds
     os = 2  # Default number of options
 
