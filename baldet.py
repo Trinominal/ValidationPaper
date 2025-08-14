@@ -77,6 +77,9 @@ def generate_agents(populationSize: int = 5, grounds: int = 2, options: int = 2,
             ws_ = np.arange(1,maskSize+1)
             for i in range(options):
                 for j in range(options):
+                    # number of stock in store
+                    # total cost of stocks
+                    
                     # ws[i,j,grounds:,0] = np.arange(1,maskSize+1)
                     # ws[i,j,grounds:,1] = np.arange(1,maskSize+1)
                     ws[i,j,grounds:,0].fill(0)
@@ -238,6 +241,9 @@ def plot(evaluation: tuple, experiment: tuple, data: tuple) -> int:
     xs.append('Collective Agent correct')  
     xs.append('Collective Agent wrong')  
 
+    ys.append(evaluation[-1][0] + evaluation[-1][1])  
+    xs.append('total evaluations')
+
     plt.figure(figsize=(len(ys), len(xs)))
     plt.bar(xs, ys)  # Create a bar chart with the data and names
     plt.title("Number of correct and wrong decisions per agent")
@@ -248,6 +254,7 @@ def plot(evaluation: tuple, experiment: tuple, data: tuple) -> int:
     plt.show()
 
     return 1
+
 
 def main() -> int:
     """Main function to handle command line arguments."""
@@ -270,4 +277,4 @@ def main() -> int:
 
 if __name__ == '__main__':
 
-    sys.exit(main())  
+    sys.exit(main())
