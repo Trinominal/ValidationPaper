@@ -237,7 +237,7 @@ def plot_results(prices, agents, decisions, warmup=50, show=True):
             # at start agent has 10000 + value(100 stock) we want to track the value gained irrespective of the passive change in value from the index.
             ax2.plot(idx[:L], hist[:L]-spent[:L], label=agent.name)
     # ax2.plot(idx_full, prices.values, label="Price")
-    ax2.set_title("Equity - price curves")
+    ax2.set_title("Equity - expenses")
     ax2.legend()
 
 
