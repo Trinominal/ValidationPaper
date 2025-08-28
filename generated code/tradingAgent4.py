@@ -240,7 +240,7 @@ def plot_results(prices, agents, decisions, warmup=50, show=True):
     ax2.set_title("Equity - expenses")
     ax2.legend()
 
-
+    plt.savefig("trading_agents_experiment.png", dpi=150)
     plt.tight_layout()
     if show:
         plt.show()
