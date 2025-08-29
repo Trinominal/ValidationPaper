@@ -12,16 +12,16 @@ def compute_grounds(prices, day, portfolio, grounds):
     if day < 20:  # not enough history for indicators
         return gs
 
-    if "MA_crossover" in grounds:
+    if "MA_crossover" in grounds: # moving average crossover
         window_short = 10
         window_long = 20
         ma_short = prices.iloc[day - window_short:day].mean()
         ma_long = prices.iloc[day - window_long:day].mean()
         ma_crossover = ma_short > ma_long
-        gs["MA_crossover"] = ma_crossover
+        gs["MA_crossover"] = ma_crossover # true means short term trend overtakes long term -> buy
 
     # RSI
-    if "RSI_low" in grounds or "RSI_high" in grounds:
+    if "RSI_low" in grounds or "RSI_high" in grounds: # Relative Strength Index
         delta = prices.diff().iloc[1:day]
         gain = delta.where(delta > 0, 0).rolling(14).mean().iloc[-1]
         loss = -delta.where(delta < 0, 0).rolling(14).mean().iloc[-1]
@@ -29,17 +29,18 @@ def compute_grounds(prices, day, portfolio, grounds):
         rsi = 100 - (100 / (1 + rs))
         if "RSI_low" in grounds:
             rsi_low = rsi < 30
-            gs["RSI_low"] = rsi_low
+            gs["RSI_low"] = rsi_low # true means oversold -> buy
         if "RSI_high" in grounds:
             rsi_high = rsi > 70
-            gs["RSI_high"] = rsi_high
+            gs["RSI_high"] = rsi_high # true means overbought -> sell
 
     # MACD (12 vs 26 EMA)
-    if "MACD_positive" in grounds:
+    if "MACD_positive" in grounds:  # moving average convergence/divergence
         ema12 = prices.ewm(span=12, adjust=False).mean().iloc[day]
         ema26 = prices.ewm(span=26, adjust=False).mean().iloc[day]
         macd_positive = ema12 > ema26
-        gs["MACD_positive"] = macd_positive
+        gs["MACD_positive"] = macd_positive # true means upward momentum -> buy
+        gs["MACD_negative"] = not macd_positive # true means downward momentum -> sell
 
     # Equity-based grounds
     current_price = prices.iloc[day]
@@ -76,9 +77,9 @@ class Agent:
 
         # Style biases
         style_bias = {
-            "conservative": {"Buy": 0.5, "Sell": 0.5, "Hold": 2.0},
-            "balanced": {"Buy": 1.0, "Sell": 1.0, "Hold": 1.0},
-            "aggressive": {"Buy": 1.25, "Sell": 1.25, "Hold": 0.5},
+            "conservative": {"Buy": 1/6, "Sell": 1/6, "Hold": 4/6},
+            "balanced": {"Buy": 1/3, "Sell": 1/3, "Hold": 1/3},
+            "aggressive": {"Buy": 5/12, "Sell": 5/12, "Hold": 1/6},
             "collective": {"Buy": 0, "Sell": 0, "Hold": 0},
         }
 
@@ -255,7 +256,7 @@ if __name__ == "__main__":
     prices = pd.Series(np.cumsum(np.random.randn(n_days)) + 100)
 
     grounds = [
-        "MA_crossover", "RSI_low", "RSI_high", "MACD_positive"
+        "MA_crossover", "RSI_low", "RSI_high", "MACD_positive", "MACD_negative"
         , "EquityGainSell", "EquityGainBuy"
     ]
 
